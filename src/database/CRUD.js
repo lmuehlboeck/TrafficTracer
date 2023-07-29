@@ -1,7 +1,7 @@
 import { db } from "./Database"
 
 export const crud = {
-    getSetting: async key => {
+    async getSetting(key) {
         return new Promise((resolve, reject) => {
             db.transaction(txn => {
                 txn.executeSql(
@@ -9,19 +9,19 @@ export const crud = {
                     [key],
                     (tx, res) => {
                         const setting = res.rows.item(0)
-                        if(!setting) resolve(null)
+                        if(!setting) resolve(undefined)
                         resolve(setting.value_text ? setting.value_text : setting.value_int)
                     }, err => console.log(err)
                 )
             })
         })
     },
-    setSetting: async (key, value) => {
+    async setSetting(key, value) {
         return new Promise(async (resolve, reject) => {
             const existingSetting = await crud.getSetting(key)
             db.transaction(txn => {
                 txn.executeSql(
-                    existingSetting !== null ? 'UPDATE settings SET value_int=?, value_text=? WHERE key=?' : 
+                    existingSetting !== undefined ? 'UPDATE settings SET value_int=?, value_text=? WHERE key=?' : 
                         'INSERT INTO settings (value_int, value_text, key) VALUES (?,?,?)',
                     Number.isInteger(value) ? [value, null, key] : [null, value, key],
                     (tx, res) => resolve(), err => console.log(err)
@@ -30,7 +30,7 @@ export const crud = {
         })
     },
 
-    createRoad: async (nr, name) => {
+    async createRoad(nr, name) {
         return new Promise((resolve, reject) => {
             db.transaction(txn => {
                 txn.executeSql(
@@ -42,7 +42,7 @@ export const crud = {
             })
         })
     },
-    getRoadId: async (nr, name) => {
+    async getRoadId(nr, name) {
         return new Promise((resolve, reject) => {
             db.transaction(txn => {
                 txn.executeSql(
@@ -55,11 +55,11 @@ export const crud = {
             })
         })
     },
-    getRoads: async () => {
+    async getRoads() {
         return new Promise((resolve, reject) => {
             db.transaction(txn => {
                 txn.executeSql(
-                    'SELECT r.*, COUNT(i.id) AS number_incidents FROM incidents i INNER JOIN roads r ON i.road_id=r.id WHERE i.delay >= 3 GROUP BY r.id ORDER BY substr(r.nr,1,1), CAST(substr(r.nr,2,8000) AS INTEGER)',
+                    'SELECT r.*, COUNT(i.id) AS number_incidents FROM incidents i INNER JOIN roads r ON i.road_id=r.id WHERE i.delay >= 3 OR i.delay IS NULL GROUP BY r.id ORDER BY substr(r.nr,1,1), CAST(substr(r.nr,2,8000) AS INTEGER)',
                     [],
                     (tx, res) => {
                         let roads = []
@@ -72,7 +72,7 @@ export const crud = {
         })
     },
 
-    createDescription: async (incidentId, description) => {
+    async createDescription(incidentId, description) {
         return new Promise((resolve, reject) => {
             db.transaction(txn => {
                 txn.executeSql(
@@ -82,11 +82,11 @@ export const crud = {
             })
         })
     },
-    getDescriptions: async (incidentId) => {
+    async getDescriptions(incidentId) {
         return new Promise((resolve, reject) => {
             db.transaction(txn => {
                 txn.executeSql(
-                    'SELECT description FROM descriptions WHERE incident_id=? ORDER BY description DESC',
+                    'SELECT description FROM descriptions WHERE incident_id=? ORDER BY CASE WHEN description="Stau" OR description="Dichter Verkehr" OR description="Stockender Verkehr" OR description="Reger Verkehr" THEN 0 ELSE 1 END',
                     [incidentId], 
                     (tx, res) => {
                         let descriptions = []
@@ -99,14 +99,14 @@ export const crud = {
         })
     },
 
-    createIncident: async (id, type, road, from, to, length, delay_min, descriptions) => {
+    async createIncident(id, type, road, from, to, direction, length, delay_sec, descriptions) {
         return new Promise(async (resolve, reject) => {
             let roadId = await crud.getRoadId(road.nr, road.name)
             roadId = roadId ? roadId : await crud.createRoad(road.nr, road.name)
             db.transaction(txn => {
                 txn.executeSql(
-                    'INSERT OR IGNORE INTO incidents (id, type, road_id, from_dest, to_dest, length, delay) VALUES (?,?,?,?,?,?,?)',
-                    [id, type, roadId, from, to, length, delay_min],
+                    'INSERT OR IGNORE INTO incidents (id, type, road_id, from_dest, to_dest, direction, length, delay) VALUES (?,?,?,?,?,?,?,?)',
+                    [id, type, roadId, from, to, direction, length, delay_sec ? Math.round(delay_sec/60) : null],
                     async (tx, res) => {
                         for(const description of descriptions)
                             await crud.createDescription(id, description)
@@ -116,11 +116,11 @@ export const crud = {
             })
         })
     },
-    getIncidentsByRoad: async (roadId) => {
+    async getIncidentsByRoad(roadId) {
         return new Promise((resolve, reject) => {
             db.transaction(txn => {
                 txn.executeSql(
-                    'SELECT * FROM incidents WHERE road_id=? AND delay >= 3',
+                    'SELECT * FROM incidents WHERE road_id=? AND (delay >= 3 OR delay IS NULL)',
                     [roadId],
                     async (tx, res) => {
                         let incidents = []
@@ -134,7 +134,7 @@ export const crud = {
             })
         })
     },
-    clearIncidents: async () => {
+    async clearIncidents() {
         return new Promise((resolve, reject) => {
             db.transaction(txn => {
                 txn.executeSql(
@@ -145,8 +145,8 @@ export const crud = {
         })
     },
 
-    getBboxes: async onlyEnabled => {
-        return new Promise((resolve, reject) => {
+    async getBboxes(onlyEnabled) {
+        return new Promise((resolve, reject) =>{
             db.transaction(txn => {
                 txn.executeSql(
                     onlyEnabled ? 'SELECT * FROM bboxes WHERE enabled=1' : 'SELECT * FROM bboxes',
@@ -162,7 +162,7 @@ export const crud = {
             })
         })
     },
-    updateBbox: async (id, enabled, description, bbox) => {
+    async updateBbox(id, enabled, description, bbox) {
         return new Promise((resolve, reject) => {
             db.transaction(txn => {
                 txn.executeSql(

@@ -34,10 +34,13 @@ export default function IncidentDetails(props) {
                         />
                     </View>
                     <View style={{flex: 1, marginHorizontal: 20}}>
+                        {
+                            props.direction ? <Text variant='bodyLarge' style={{fontStyle: 'italic'}}>Richtung {props.direction}</Text> : ''
+                        }
                         <Text variant='bodyLarge' style={{fontWeight: 'bold'}}>Zwischen {props.from_dest} und {props.to_dest}</Text>
-                        <Text variant='bodyLarge'>{Math.round(props.length / 100) / 10} km {props.descriptions.join(', ')}</Text>
+                        <Text variant='bodyLarge' style={{marginVertical: 5}}>{props.delay ? `${Math.round(props.length / 100) / 10} km ` : ''}{props.descriptions.join(', ')}</Text>
                         <Text variant='bodyLarge' style={{color: theme.colors.error, textAlign: 'right'}}>
-                            +{props.delay ? props.delay : 'Vorsicht!'} min
+                            {props.delay ? `+${props.delay} min` : 'Vorsicht!'}
                         </Text>
                     </View>
                 </View>

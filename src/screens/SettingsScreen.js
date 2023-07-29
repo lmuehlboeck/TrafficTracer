@@ -1,18 +1,26 @@
 import { useEffect, useState, useContext } from 'react'
 import { FlatList, View } from 'react-native'
-import { Checkbox, Switch, Text, TouchableRipple, useTheme } from 'react-native-paper'
+import { Checkbox, Switch, Text, TextInput, TouchableRipple, useTheme } from 'react-native-paper'
 import { crud } from '../database/CRUD'
 import { darkTheme, lightTheme } from '../styles/themes'
 import { AppContext } from '../App'
+import { useIsFocused } from '@react-navigation/native'
 
 const styles = require('../styles/styles')
 
 export default function SettingsScreen({ navigator }) {
+    const focused = useIsFocused()
     const { theme, setTheme } = useContext(AppContext)
     const [darkMode, setDarkMode] = useState(theme.dark)
+    const [apiKey, setApiKey] = useState(null)
     const [bboxes, setBboxes] = useState([])
 
     const toggleDarkMode = () => setDarkMode(!darkMode)
+
+    const updateApiKey = key => {
+        setApiKey(key)
+        crud.setSetting('api-key', key)
+    }
 
     const toggleBbox = bbox => {
         crud.updateBbox(bbox.id, !bbox.enabled, bbox.description, bbox.bbox)
@@ -26,8 +34,9 @@ export default function SettingsScreen({ navigator }) {
     }, [darkMode])
 
     useEffect(() => {
+        crud.getSetting('api-key').then(key => setApiKey(key))
         crud.getBboxes().then(bboxes => setBboxes(bboxes))
-    }, [])
+    }, [focused])
 
     return (
         <View style={styles.bodyContainer}>
@@ -42,6 +51,13 @@ export default function SettingsScreen({ navigator }) {
                             <Text variant='bodyLarge' style={{marginHorizontal: 10}}>Dark Mode</Text>
                         </View>
                 </TouchableRipple>
+                <TextInput 
+                    style={{marginVertical: 5}}
+                    label='API-Key'
+                    mode='outlined'
+                    value={apiKey}
+                    onChangeText={text => updateApiKey(text)}
+                />
             </View>
             <Text variant='bodyLarge' style={{marginVertical: 10, color: theme.colors.primary}}>Bounding Boxes</Text>
             <FlatList

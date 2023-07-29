@@ -17,6 +17,12 @@ export default function RoadsList(props) {
             sections={props.roads}
             refreshing={props.refreshing}
             onRefresh={props.onRefresh}
+            ListEmptyComponent={() => (
+                <View>
+                    <Text style={{color: theme.colors.outline, textAlign: 'center'}}>Keine Meldungen gefunden</Text>
+                    <Text style={{color: theme.colors.outline, textAlign: 'center'}}>Zum aktualisieren herunterziehen</Text>
+                </View>
+            )}
         />
     )
 }

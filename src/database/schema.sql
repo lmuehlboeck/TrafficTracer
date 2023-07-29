@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS incidents (
     road_id INTEGER NOT NULL,
     from_dest TEXT NOT NULL,
     to_dest TEXT NOT NULL,
+    direction TEXT,
     length INTEGER,
     delay INTEGER,
 
